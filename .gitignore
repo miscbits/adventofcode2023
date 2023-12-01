@@ -1,0 +1,4 @@
+zig-cache
+*.pyc
+__pycache__
+*.exe

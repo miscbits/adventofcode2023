@@ -21,7 +21,7 @@ fn mapStringToInt(inputString: []const u8) u8 {
     return 0;
 }
 
-fn findSpelledOutNumbers(inputString: []const u8) !FoundNumTuple {
+fn findMinMaxNumbers(inputString: []const u8) !FoundNumTuple {
     var foundMin: []const u8 = "not found";
     var foundMax: []const u8 = "not found";
     const stringDict = [_][]const u8{
@@ -58,7 +58,7 @@ pub fn main() anyerror!void {
     var buf: [1024]u8 = undefined;
     var total: usize = 0;
     while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        const result = try findSpelledOutNumbers(line);
+        const result = try findMinMaxNumbers(line);
         total += (mapStringToInt(result[0]) * 10) + mapStringToInt(result[1]);
     }
 
