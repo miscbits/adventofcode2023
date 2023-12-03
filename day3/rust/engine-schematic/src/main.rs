@@ -125,7 +125,7 @@ impl EngineSchema {
 
     fn calculate_node(&self, coord: Coord) -> Node {
         let Coord(x, y) = coord;
-        if x > self.dimmension_x || y > self.dimmension_y {
+        if x >= self.dimmension_x || y >= self.dimmension_y {
             return Node {
                 location: coord,
                 length: 1,
@@ -151,25 +151,32 @@ impl EngineSchema {
     }
 
     fn calculate_neighborhood(&self, node: &Node) -> HashSet<Node> {
-        let location = &node.location;
+        let Coord(location_x, location_y) = node.location;
         let mut nodes: HashSet<Node> = HashSet::new();
-        for x in [location.0 - 1, location.0 + 1] {
-            for y in (location.1 - 1)..(location.1 + node.length) {
-                nodes.insert(self.calculate_node(Coord(x, y)));
+
+        for x in [location_x as isize - 1, location_x as isize + 1] {
+            if x < 0 || x >= self.dimmension_x as isize {
+                continue;
+            }
+            for y in (location_y as isize - 1)..(location_y as isize + node.length as isize) {
+                if y < 0 || y >= self.dimmension_y as isize {
+                    continue;
+                }
+                nodes.insert(self.calculate_node(Coord(x as usize, y as usize)));
             }
         }
-        nodes.insert(self.calculate_node(Coord(location.0, location.1 - 1)));
-        nodes.insert(self.calculate_node(Coord(location.0, location.1 + 1)));
+        nodes.insert(self.calculate_node(Coord(location_x, location_y - 1)));
+        nodes.insert(self.calculate_node(Coord(location_x, location_y + 1)));
         nodes
     }
 }
 
 fn main() {
-    part1();
+    part1("../../input.txt");
 }
 
-fn part1() {
-    let mut engine = load_schematic("../../input.txt").unwrap();
+fn part1(input_file: &str) -> usize {
+    let mut engine = load_schematic(input_file).unwrap();
 
     engine.load_numbers();
     engine.load_symbols();
@@ -186,10 +193,8 @@ fn part1() {
             }
         }
     }
-    println!("{:?}", count);
+    count
 }
-
-fn part2() {}
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
@@ -219,4 +224,13 @@ fn load_schematic(schema_path: &str) -> Option<EngineSchema> {
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_task1() {
+        assert_eq!(format!("{}", part1("../../test.txt")), "4361");
+    }
 }
