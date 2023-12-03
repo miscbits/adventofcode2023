@@ -15,7 +15,6 @@ where
 
 fn get_max_cubes_by_game(games: DataFrame) -> Result<DataFrame, PolarsError> {
     return games
-        .clone()
         .lazy()
         .group_by(["game_id"])
         .agg([
@@ -33,7 +32,6 @@ fn filter_possible_games(
     blue: u32,
 ) -> Result<DataFrame, PolarsError> {
     return get_max_cubes_by_game(games)?
-        .clone()
         .lazy()
         .filter(
             col("max_red")
@@ -50,7 +48,6 @@ fn part1() {
         filter_possible_games(create_df(), 12, 13, 14).expect("could not filter possible games");
 
     let id_sum = possible_games
-        .clone()
         .lazy()
         .select([col("game_id").sum()])
         .collect()
@@ -63,7 +60,7 @@ fn part2() {
     let max_cubes_by_games =
         get_max_cubes_by_game(create_df()).expect("could not get max cubes by game");
 
-    let powers = max_cubes_by_games.clone().lazy().select([
+    let powers = max_cubes_by_games.lazy().select([
         col("game_id"),
         (col("max_red") * col("max_green") * col("max_blue")).alias("power"),
     ]);
@@ -91,10 +88,14 @@ fn create_df() -> DataFrame {
             if let Ok(game) = line {
                 let mut game_parts = game.split(":");
 
-                let game_header = &mut game_parts.next().unwrap().split_whitespace();
-                game_header.next();
+                let game_id = game_parts
+                    .next()
+                    .unwrap()
+                    .replace("Game", "")
+                    .trim()
+                    .parse::<u32>()
+                    .expect("could not parse game id");
 
-                let game_id = game_header.next().unwrap().parse::<u32>().unwrap();
                 let rounds: Vec<&str> = game_parts.next().unwrap().split(";").collect();
                 let mut round_num = 0u32;
                 for round in rounds {
@@ -103,23 +104,11 @@ fn create_df() -> DataFrame {
                     let round_data: Vec<&str> = round.split(",").collect();
                     for color_data in round_data {
                         if color_data.contains("red") {
-                            r = color_data
-                                .replace(" ", "")
-                                .replace("red", "")
-                                .parse::<u32>()
-                                .unwrap();
+                            r = parse_num_from_color_data("red");
                         } else if color_data.contains("green") {
-                            g = color_data
-                                .replace(" ", "")
-                                .replace("green", "")
-                                .parse::<u32>()
-                                .unwrap();
+                            g = parse_num_from_color_data("green");
                         } else if color_data.contains("blue") {
-                            b = color_data
-                                .replace(" ", "")
-                                .replace("blue", "")
-                                .parse::<u32>()
-                                .unwrap();
+                            b = parse_num_from_color_data("blue");
                         }
                     }
                     game_ids.push(game_id);
@@ -139,4 +128,12 @@ fn create_df() -> DataFrame {
         "blue" => &blues,
     )
     .unwrap();
+}
+
+fn parse_num_from_color_data(color: &str) -> u32 {
+    color
+        .replace(" ", "")
+        .replace("red", "")
+        .parse::<u32>()
+        .unwrap()
 }
