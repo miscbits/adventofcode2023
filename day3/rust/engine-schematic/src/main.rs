@@ -24,7 +24,7 @@ struct Node {
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.location == other.location
+        self.location == other.location && self.value == other.value && self.length == other.length
     }
 }
 
@@ -54,7 +54,7 @@ impl EngineSchema {
                     length += 1;
                 } else if current_number != 0 {
                     self.numbers.insert(Node {
-                        location: Coord(x, y),
+                        location: Coord(x, y - length),
                         length: length,
                         value: NodeType::Number(current_number),
                     });
@@ -64,7 +64,7 @@ impl EngineSchema {
             }
             if current_number != 0 {
                 self.numbers.insert(Node {
-                    location: Coord(x, self.dimmension_y - 1),
+                    location: Coord(x, self.dimmension_y - length),
                     length: length,
                     value: NodeType::Number(current_number),
                 });
@@ -90,10 +90,10 @@ impl EngineSchema {
         let Coord(x, y) = coord;
         if let Some(_) = self.schema[x][y].to_digit(10) {
             // find left digit index
-            let mut li = Coord(x, y);
+            let mut li = Coord(x.clone(), y.clone());
 
             while li.1 > 0 {
-                if !self.schema[x][li.1].is_numeric() {
+                if !self.schema[li.0][li.1 - 1].is_numeric() {
                     break;
                 }
                 li.1 -= 1;
@@ -104,9 +104,9 @@ impl EngineSchema {
             let mut length = 0;
             // calculate num and len
             while ri.1 < self.dimmension_y {
-                if self.schema[x][ri.1].is_numeric() {
-                    current_number =
-                        current_number * 10 + self.schema[x][ri.1].to_digit(10).unwrap() as usize;
+                if self.schema[ri.0][ri.1].is_numeric() {
+                    current_number = current_number * 10
+                        + self.schema[ri.0][ri.1].to_digit(10).unwrap() as usize;
                     length += 1;
                     ri.1 += 1;
                 } else {
@@ -158,42 +158,54 @@ impl EngineSchema {
             if x < 0 || x >= self.dimmension_x as isize {
                 continue;
             }
-            for y in (location_y as isize - 1)..(location_y as isize + node.length as isize) {
+            for y in (location_y as isize - 1)..(location_y as isize + node.length as isize + 1) {
                 if y < 0 || y >= self.dimmension_y as isize {
                     continue;
                 }
-                nodes.insert(self.calculate_node(Coord(x as usize, y as usize)));
+                nodes.insert(self.calculate_node(Coord(x.clone() as usize, y.clone() as usize)));
             }
         }
-        nodes.insert(self.calculate_node(Coord(location_x, location_y - 1)));
-        nodes.insert(self.calculate_node(Coord(location_x, location_y + 1)));
+        if location_y != 0 {
+            nodes.insert(self.calculate_node(Coord(location_x.clone(), location_y.clone() - 1)));
+        }
+        if location_y + node.length != self.dimmension_y {
+            nodes.insert(
+                self.calculate_node(Coord(location_x.clone(), location_y.clone() + node.length)),
+            );
+        }
+
         nodes
     }
 }
 
 fn main() {
-    part1("../../input.txt");
-}
-
-fn part1(input_file: &str) -> usize {
-    let mut engine = load_schematic(input_file).unwrap();
-
+    let mut engine = load_schematic("../../input.txt").unwrap();
     engine.load_numbers();
     engine.load_symbols();
 
+    part1(engine);
+}
+
+fn part1(engine: EngineSchema) -> usize {
     let mut count = 0;
     for node in &engine.numbers {
         if let NodeType::Number(node_value) = node.value {
             let neighbors = engine.calculate_neighborhood(node);
-            for neighbor in neighbors {
-                if let NodeType::Symbol(_) = neighbor.value {
-                    count += node_value;
-                    break;
-                }
+            if neighborhood_has_symbol(&neighbors) {
+                count += node_value;
             }
         }
     }
     count
+}
+
+fn neighborhood_has_symbol(neighborhood: &HashSet<Node>) -> bool {
+    for n in neighborhood {
+        if let NodeType::Symbol(_) = n.value {
+            return true;
+        }
+    }
+    return false;
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -231,6 +243,193 @@ mod tests {
     use super::*;
     #[test]
     fn test_task1() {
-        assert_eq!(format!("{}", part1("../../test.txt")), "4361");
+        let mut engine = load_schematic("../../test.txt").unwrap();
+        engine.load_numbers();
+        engine.load_symbols();
+
+        assert_eq!(format!("{}", part1(engine)), "4361");
+    }
+
+    #[test]
+    fn test_load_schematic() {
+        let mut schematic: EngineSchema = load_schematic("../../test.txt").unwrap();
+        let expected: Vec<Vec<char>> = vec![
+            //    0    1    2    3    4    5    6    7    8    9
+            vec!['4', '6', '7', '.', '.', '1', '1', '4', '.', '.'], // 0
+            vec!['.', '.', '.', '*', '.', '.', '.', '.', '.', '.'], // 1
+            vec!['.', '.', '3', '5', '.', '.', '6', '3', '3', '.'], // 2
+            vec!['.', '.', '.', '.', '.', '.', '#', '.', '.', '.'], // 3
+            vec!['6', '1', '7', '*', '.', '.', '.', '.', '.', '.'], // 4
+            vec!['.', '.', '.', '.', '.', '+', '.', '5', '8', '1'], // 5
+            vec!['.', '.', '5', '9', '2', '.', '.', '.', '.', '.'], // 6
+            vec!['.', '.', '.', '.', '.', '.', '7', '5', '5', '.'], // 7
+            vec!['.', '.', '.', '$', '.', '*', '.', '.', '.', '.'], // 8
+            vec!['.', '6', '6', '4', '.', '5', '9', '8', '.', '.'], // 9
+        ];
+        assert_eq!(schematic.schema, expected);
+
+        schematic.load_symbols();
+
+        let expected = vec![
+            Node {
+                location: Coord(1, 3),
+                length: 1,
+                value: NodeType::Symbol('*'),
+            },
+            Node {
+                location: Coord(3, 6),
+                length: 1,
+                value: NodeType::Symbol('#'),
+            },
+            Node {
+                location: Coord(4, 3),
+                length: 1,
+                value: NodeType::Symbol('*'),
+            },
+            Node {
+                location: Coord(5, 5),
+                length: 1,
+                value: NodeType::Symbol('+'),
+            },
+            Node {
+                location: Coord(8, 3),
+                length: 1,
+                value: NodeType::Symbol('$'),
+            },
+            Node {
+                location: Coord(8, 5),
+                length: 1,
+                value: NodeType::Symbol('*'),
+            },
+        ];
+        assert_eq!(schematic.symbols, expected);
+
+        schematic.load_numbers();
+
+        let expected = vec![
+            Node {
+                location: Coord(0, 0),
+                length: 3,
+                value: NodeType::Number(467),
+            },
+            Node {
+                location: Coord(0, 5),
+                length: 3,
+                value: NodeType::Number(114),
+            },
+            Node {
+                location: Coord(2, 2),
+                length: 2,
+                value: NodeType::Number(35),
+            },
+            Node {
+                location: Coord(2, 6),
+                length: 3,
+                value: NodeType::Number(633),
+            },
+            Node {
+                location: Coord(4, 0),
+                length: 3,
+                value: NodeType::Number(617),
+            },
+            Node {
+                location: Coord(5, 7),
+                length: 3,
+                value: NodeType::Number(581),
+            },
+            Node {
+                location: Coord(6, 2),
+                length: 3,
+                value: NodeType::Number(592),
+            },
+            Node {
+                location: Coord(7, 6),
+                length: 3,
+                value: NodeType::Number(755),
+            },
+            Node {
+                location: Coord(9, 1),
+                length: 3,
+                value: NodeType::Number(664),
+            },
+            Node {
+                location: Coord(9, 5),
+                length: 3,
+                value: NodeType::Number(598),
+            },
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(schematic.numbers, expected);
+    }
+
+    #[test]
+    fn test_find_calculate_node() {
+        let schematic: EngineSchema = load_schematic("../../test.txt").unwrap();
+        let node = schematic.calculate_node(Coord(2, 2));
+
+        assert_eq!(
+            node,
+            Node {
+                location: Coord(2, 2),
+                length: 2,
+                value: NodeType::Number(35)
+            }
+        );
+
+        let node = schematic.calculate_node(Coord(2, 8));
+
+        assert_eq!(
+            node,
+            Node {
+                location: Coord(2, 6),
+                length: 3,
+                value: NodeType::Number(633)
+            }
+        );
+
+        let node = schematic.calculate_node(Coord(5, 9));
+
+        assert_eq!(
+            node,
+            Node {
+                location: Coord(5, 7),
+                length: 3,
+                value: NodeType::Number(581)
+            }
+        );
+    }
+
+    #[test]
+    fn test_find_neighbors() {
+        let schematic: EngineSchema = load_schematic("../../test.txt").unwrap();
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(2, 2)));
+        assert_eq!(neighborhood.len(), 10);
+
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(6, 2)));
+        assert_eq!(neighborhood.len(), 12);
+
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(0, 0)));
+        assert_eq!(neighborhood.len(), 5);
+
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(4, 0)));
+        assert_eq!(neighborhood.len(), 9);
+
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(5, 9)));
+        assert_eq!(neighborhood.len(), 9);
+
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(9, 2)));
+        assert_eq!(neighborhood.len(), 7);
+    }
+
+    #[test]
+    fn test_neighborhood_has_symbol() {
+        let schematic: EngineSchema = load_schematic("../../test.txt").unwrap();
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(2, 6)));
+        assert!(neighborhood_has_symbol(&neighborhood));
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(5, 9)));
+        assert!(!neighborhood_has_symbol(&neighborhood));
+        let neighborhood = schematic.calculate_neighborhood(&schematic.calculate_node(Coord(9, 2)));
+        assert!(neighborhood_has_symbol(&neighborhood));
     }
 }
