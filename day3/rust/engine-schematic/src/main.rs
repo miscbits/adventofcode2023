@@ -183,16 +183,45 @@ fn main() {
     engine.load_numbers();
     engine.load_symbols();
 
-    part1(engine);
+    println!("{:?}", part1(&engine));
+    println!("{:?}", part2(&engine));
 }
 
-fn part1(engine: EngineSchema) -> usize {
+fn part1(engine: &EngineSchema) -> usize {
     let mut count = 0;
     for node in &engine.numbers {
         if let NodeType::Number(node_value) = node.value {
             let neighbors = engine.calculate_neighborhood(node);
             if neighborhood_has_symbol(&neighbors) {
                 count += node_value;
+            }
+        }
+    }
+    count
+}
+
+fn part2(engine: &EngineSchema) -> usize {
+    let mut count = 0;
+    for node in &engine.symbols {
+        if let NodeType::Symbol(_) = node.value {
+            let neighbor_values: Vec<usize> = engine
+                .calculate_neighborhood(node)
+                .iter()
+                .filter(|neighbor| {
+                    if let NodeType::Number(_) = neighbor.value {
+                        return true;
+                    }
+                    return false;
+                })
+                .map(|neighbor| {
+                    if let NodeType::Number(v) = neighbor.value {
+                        return v;
+                    }
+                    return 0;
+                })
+                .collect();
+            if neighbor_values.len() == 2 {
+                count += neighbor_values[0] * neighbor_values[1];
             }
         }
     }
@@ -242,12 +271,21 @@ fn load_schematic(schema_path: &str) -> Option<EngineSchema> {
 mod tests {
     use super::*;
     #[test]
-    fn test_task1() {
+    fn test_part1() {
         let mut engine = load_schematic("../../test.txt").unwrap();
         engine.load_numbers();
         engine.load_symbols();
 
-        assert_eq!(format!("{}", part1(engine)), "4361");
+        assert_eq!(format!("{}", part1(&engine)), "4361");
+    }
+
+    #[test]
+    fn test_part2() {
+        let mut engine = load_schematic("../../test.txt").unwrap();
+        engine.load_numbers();
+        engine.load_symbols();
+
+        assert_eq!(format!("{}", part2(&engine)), "467835");
     }
 
     #[test]
