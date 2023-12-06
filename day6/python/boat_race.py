@@ -30,6 +30,8 @@ def calculate_distances(race_len):
 
 def calculate_num_ways_to_win(race_len, threshold):
     max_threshold_for_victory = calculate_max_distance(race_len) - 1
+    if threshold > max_threshold_for_victory:
+        return 0
     num_ways_to_win = 1 + ((race_len) % 2)
 
     while max_threshold_for_victory > threshold:
