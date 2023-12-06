@@ -1,8 +1,6 @@
 use polars::prelude::*;
 use std::fs;
 
-use std::ops::Range;
-
 fn main() {
     println!("{:?}", part_1("../../input.txt"));
     println!("{:?}", part_2("../../input.txt"));
@@ -12,17 +10,13 @@ fn part_2(file_name: &str) -> Option<i64> {
     let binding = fs::read_to_string(file_name).unwrap();
     let table_data: Vec<_> = binding.split("\n\n").collect();
 
-    let seeds: Vec<Range<i64>> = table_data[0]
+    let seeds: Vec<(i64, i64)> = table_data[0]
         .replace("seeds: ", "")
         .split(" ")
         .map(|str_n| str_n.parse::<i64>().unwrap())
         .collect::<Vec<_>>()
         .chunks_exact(2)
-        .map(|c| {
-            let start = c[0];
-            let len = c[1];
-            start..start + len
-        })
+        .map(|c| (c[0], c[1]))
         .collect();
 
     let seed_soil = parse_table_data_to_vec(table_data[1]);
@@ -33,43 +27,30 @@ fn part_2(file_name: &str) -> Option<i64> {
     let temperature_humidity = parse_table_data_to_vec(table_data[6]);
     let humidity_location = parse_table_data_to_vec(table_data[7]);
 
-    None
-}
+    // Calculate the minimum location number for each range
+    seeds
+        .iter()
+        .map(|&(start, length)| {
+            let end = start + length;
+            let soil_start = convert_number(start, seed_soil.clone());
+            let soil_end = convert_number(end, seed_soil.clone());
+            let fertilizer_start = convert_number(soil_start, soil_fertilizer.clone());
+            let fertilizer_end = convert_number(soil_end, soil_fertilizer.clone());
+            let water_start = convert_number(fertilizer_start, fertilizer_water.clone());
+            let water_end = convert_number(fertilizer_end, fertilizer_water.clone());
+            let light_start = convert_number(water_start, water_light.clone());
+            let light_end = convert_number(water_end, water_light.clone());
+            let temperature_start = convert_number(light_start, light_temperature.clone());
+            let temperature_end = convert_number(light_end, light_temperature.clone());
+            let humidity_start = convert_number(temperature_start, temperature_humidity.clone());
+            let humidity_end = convert_number(temperature_end, temperature_humidity.clone());
+            let location_start = convert_number(humidity_start, humidity_location.clone());
+            let location_end = convert_number(humidity_end, humidity_location.clone());
 
-// Search backwards from outputs to seeds
-// For each output of each layer of mapping
-//   compute the location this would lead to
-//   if that location is smaller than the smallest location we've found so far
-//     compute backwards to what seed would get us here
-//     if that seed is in the set of seeds
-//       update smallest location
-fn backwards_search<P>(seed_pred: P, mappings: &Vec<Vec<(i64, i64, i64)>>) -> i64
-where
-    P: Fn(i64) -> bool,
-{
-    let mappings_rev = mappings.iter().rev().collect::<Vec<_>>();
-    let n = mappings_rev.len();
-
-    let mut smallest = i64::MAX;
-    for (i, mapping) in mappings_rev.iter().enumerate() {
-        let s = mapping
-            .iter()
-            .flat_map(|m| m.0..m.0 + m.1)
-            .find_map(|o| {
-                let maybe_seed = mappings_rev[i..].iter().fold(o, |s, m| m.map_back(s));
-
-                if seed_pred(maybe_seed.try_into().unwrap()) {
-                    let resultant_location = mappings[n - i..].iter().fold(o, |s, m| m.map(s));
-                    Some(resultant_location)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(i64::MAX);
-
-        smallest = smallest.min(s);
-    }
-    smallest
+            // Return the minimum location number for the range
+            location_start.min(location_end)
+        })
+        .min()
 }
 
 fn part_1(file_name: &str) -> Option<i64> {
@@ -185,11 +166,13 @@ fn find_overlap(range1: (i64, i64), range2: (i64, i64)) -> Option<(i64, i64)> {
     }
 }
 
-fn find_overlap_with_ranges(
-    range1: (i64, i64),
-    range2: (i64, i64),
-) -> Option<((i64, i64), (i64, i64), (i64, i64))> {
-    unimplemented!()
+fn convert_number(input_number: i64, conversion_map: Vec<(i64, i64, i64)>) -> i64 {
+    for (dest_start, src_start, length) in conversion_map {
+        if input_number >= src_start && input_number < src_start + length {
+            return dest_start + (input_number - src_start);
+        }
+    }
+    input_number
 }
 
 #[cfg(test)]
