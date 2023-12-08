@@ -1,3 +1,5 @@
+import math
+
 def calculate_max_distance(race_len):
     return int((race_len/2) ** 2)
 
@@ -27,6 +29,15 @@ def calculate_distances(race_len):
         race_distances.append((windup,windup * (race_len - windup)))
     return race_distances
 
+def calculate_num_ways_to_win_quadratic(race_len, threshold):
+    def solve_quadratic(b, c):
+        # a is always -1, otherwise normal quadratic
+        determinant = b*b - -4*c
+        root1 = (-b + math.sqrt(determinant)) / (-2)
+        root2 = (-b - math.sqrt(determinant)) / (-2)
+        return int(math.ceil(root2)) - int(math.ceil(root1))
+    return solve_quadratic(race_len, threshold)
+        
 
 def calculate_num_ways_to_win(race_len, threshold):
     max_threshold_for_victory = calculate_max_distance(race_len) - 1
@@ -53,7 +64,7 @@ if __name__ == '__main__':
 
     race_time = 58996469
     threshold = 478223210191071
-    print(part_2(race_time, threshold))
+    print(calculate_num_ways_to_win_quadratic(race_time, threshold))
 
     # threshold = 190
     # race_len = 28
