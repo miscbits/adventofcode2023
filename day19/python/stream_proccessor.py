@@ -116,15 +116,22 @@ def part_1():
 
 
 @dataclass
+class RuleSet:
+    destination: str
+    positive_rules: list
+    negative_rules: list
+
+
+@dataclass
 class Possibility:
     destination: str = "in"
-    min_x: int = 0
+    min_x: int = 1
     max_x: int = 4000
-    min_m: int = 0
+    min_m: int = 1
     max_m: int = 4000
-    min_a: int = 0
+    min_a: int = 1
     max_a: int = 4000
-    min_s: int = 0
+    min_s: int = 1
     max_s: int = 4000
 
     def is_valid(self):
@@ -211,7 +218,20 @@ def eval_possibilities(possibility, routes):
             new_possibilities.append(new_possib)
         if not eval_possib.is_valid():
             break
-    print(new_possibilities)
+    return new_possibilities
+
+
+def eval_possible_rulesets(rules, routes):
+    new_possibilities = []
+    for rule, destination in routes:
+        if destination != "R":
+            new_possible_path = RuleSet(
+                destination, list(rules.positive_rules), list(rules.negative_rules)
+            )
+            rules.negative_rules.append(rule)
+            if rule != "default":
+                new_possible_path.positive_rules.append(rule)
+            new_possibilities.append(new_possible_path)
     return new_possibilities
 
 
@@ -224,30 +244,95 @@ def part_2():
         stream_routes = simplified
         simplified = simplify_map(simplified)
 
-    possibilities = deque()
-    possibilities.append(Possibility())
-    accepted_possibilities = []
-    while possibilities:
-        possibility = possibilities.pop()
-        if possibility.destination == "A":
-            accepted_possibilities.append(possibility)
+    # possibilities = deque()
+    # possibilities.append(Possibility())
+    # accepted_possibilities = []
+    # while possibilities:
+    #     possibility = possibilities.pop()
+    #     if possibility.destination == "A":
+    #         accepted_possibilities.append(possibility)
+    #     else:
+    #         for p in eval_possibilities(
+    #             possibility, stream_routes[possibility.destination]
+    #         ):
+    #             possibilities.append(p)
+    # print("accpted possibilities:", accepted_possibilities)
+
+    possible_rulesets = deque()
+    possible_rulesets.append(RuleSet("in", [], []))
+    accepted_rulesets = []
+    while possible_rulesets:
+        print(list(possible_rulesets))
+        ruleset = possible_rulesets.pop()
+        if ruleset.destination == "A":
+            accepted_rulesets.append(replace(ruleset))
         else:
-            for p in eval_possibilities(
-                possibility, stream_routes[possibility.destination]
+            for r in eval_possible_rulesets(
+                ruleset, stream_routes[ruleset.destination]
             ):
-                possibilities.append(p)
-    print(accepted_possibilities)
+                # print(r)
+                possible_rulesets.append(r)
+    print(accepted_rulesets)
+
+    # count = 0
+    # for possibility in accepted_possibilities:
+    #     count += (
+    #         (possibility.max_x - possibility.min_x)
+    #         * (possibility.max_m - possibility.min_m)
+    #         * (possibility.max_a - possibility.min_a)
+    #         * (possibility.max_s - possibility.min_s)
+    #     )
+    # # print(accepted_possibilities)
+    # print(count)
 
     count = 0
+    for ruleset in accepted_rulesets:
+        possibility = Possibility()
+        for rule in ruleset.positive_rules:
+            match rule[1]:
+                case "=":
+                    rule_val = int(rule[2:])
+                    possibility.set_prop("max_" + rule[0], rule_val)
+                    possibility.set_prop("min_" + rule[0], rule_val)
+                case ">":
+                    rule_val = int(rule[2:])
+                    possibility.set_prop("min_" + rule[0], rule_val + 1)
+                case "<":
+                    rule_val = int(rule[2:])
+                    possibility.set_prop("max_" + rule[0], rule_val - 1)
+        for rule in ruleset.negative_rules:
+            match rule[1]:
+                case "=":
+                    rule_val = int(rule[2:])
+                    possibility.set_prop(
+                        "max_" + rule[0],
+                        max(rule_val - 1, possibility.get_prop("max_" + rule[0])),
+                    )
+                    possibility.set_prop(
+                        "min_" + rule[0],
+                        min(rule_val + 1, possibility.get_prop("min_" + rule[0])),
+                    )
+                case ">":
+                    rule_val = int(rule[2:])
+                    possibility.set_prop(
+                        "max_" + rule[0],
+                        min(possibility.get_prop("max_" + rule[0]), rule_val),
+                    )
+                case "<":
+                    rule_val = int(rule[2:])
+                    possibility.set_prop(
+                        "min_" + rule[0],
+                        max(possibility.get_prop("min_" + rule[0]), rule_val),
+                    )
+        print(possibility)
+        if possibility.is_valid():
+            count += (
+                (possibility.max_x - possibility.min_x)
+                * (possibility.max_m - possibility.min_m)
+                * (possibility.max_a - possibility.min_a)
+                * (possibility.max_s - possibility.min_s)
+            )
 
-    for possibility in accepted_possibilities:
-        count += (
-            (possibility.max_x - possibility.min_x)
-            * (possibility.max_m - possibility.min_m)
-            * (possibility.max_a - possibility.min_a)
-            * (possibility.max_s - possibility.min_s)
-        )
-    print(accepted_possibilities)
     print(count)
 
 
