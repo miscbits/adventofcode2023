@@ -1,6 +1,7 @@
 from stream_proccessor import (
     parse_message,
     test_condition,
+    test_conditions,
     parse_direction,
 )
 import unittest
@@ -28,6 +29,11 @@ class TestStreamProcessor(unittest.TestCase):
         actual = parse_direction("pv{a>1716:R,A}")
 
         self.assertEqual(expected, actual)
+
+    def test_test_conditions(self):
+        test_message = {"x": 100, "m": 225, "a": 1232, "s": 8}
+        self.assertTrue(test_conditions(test_message, ["s=104", "x<101"]))
+        self.assertFalse(test_conditions(test_message, ["s=104", "x<101", "m=225"]))
 
 
 if __name__ == "__main__":

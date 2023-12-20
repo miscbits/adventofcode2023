@@ -1,6 +1,4 @@
-from kafka import KafkaProducer
-import json
-from kafka.admin import KafkaAdminClient, NewTopic
+from collections import deque
 
 
 def parse_message(message_input):
@@ -30,11 +28,9 @@ def parse_direction(direction_input):
     stream_name, destinations = direction_input[:-1].split("{")
     destinations = destinations.split(",")
     instructions = []
-    conditions = []
     for instruction in destinations[:-1]:
         condition, destination = instruction.split(":")
-        conditions.append(condition)
-        instructions.append(([c for c in conditions], destination))
+        instructions.append((condition, destination))
     instructions.append(("default", destinations[-1]))
     return (stream_name, instructions)
 
@@ -73,7 +69,7 @@ def simplify_map(stream_routes):
 
 
 def part_1():
-    stream_routes, messages = parse_input("../test.txt")
+    stream_routes, messages = parse_input("../input.txt")
     stream_routes = {route[0]: route[1] for route in stream_routes}
 
     simplified = simplify_map(dict(stream_routes))
@@ -81,19 +77,41 @@ def part_1():
         stream_routes = simplified
         simplified = simplify_map(simplified)
 
-    admin_client = KafkaAdminClient(
-        bootstrap_servers="localhost:9092", client_id="admin_client"
-    )
-
-    topic_list = [NewTopic(name="in", num_partitions=1, replication_factor=1)]
-    admin_client.create_topics(new_topics=topic_list, validate_only=False)
-    producer = KafkaProducer(
-        bootstrap_servers="localhost:9092",
-        value_serializer=lambda m: json.dumps(m).encode("ascii"),
-    )
+    topics = {r: deque() for r in stream_routes}
 
     for message in messages:
-        producer.produce(message)
+        topics["in"].append(message)
+
+    accepted_queue = deque()
+
+    topics_to_process_next = deque()
+    topics_to_process_next.append("in")
+
+    while list(topics_to_process_next):
+        topic = topics_to_process_next.popleft()  # FIFO processing
+        print("processing", topic)
+        next_topics = set()
+        while list(topics[topic]):
+            q_item = topics[topic].pop()
+            routes = stream_routes[topic]
+            for rules, destination in routes:
+                if rules == "default" or test_condition(q_item, rules):
+                    if destination == "A":
+                        accepted_queue.append(q_item)
+                    elif destination == "R":
+                        pass  # message is
+                    else:
+                        next_topics.add(destination)
+                        topics[destination].append(q_item)
+                    break
+        for nt in next_topics:
+            topics_to_process_next.append(nt)
+
+    total = 0
+    for item in accepted_queue:
+        total += item["x"] + item["m"] + item["a"] + item["s"]
+
+    print(total)
 
 
 if __name__ == "__main__":
