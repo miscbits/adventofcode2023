@@ -56,20 +56,21 @@ def part_1():
         # expanded = (position for position in (  if position not in garden.blockers and 0 <= position[0] < garden.col_len and 0<= position[1] < garden.row_len)
         return list(positions)
     
-    for i in range(720):
+    for i in range(64):
         potentials = {position for position in itertools.chain(*[expand(p) for p in potentials])}
 
         print(i +1, len(potentials))
 
-def find_coefficients(f1, f2, f3):
-    f2 += -4*f1
-    f3 += -9*f1
-    f2 *= -.5
-    f3 += 6 * f2
-    f2 += -1.5*f3
-    f1 += -1 * f3
-    f1 += -1 * f2
-    return (f1, f2, f3)
+def find_coefficients(x, y, z):
+    y += -4*x;
+    z += -9*x;
+    y *= -0.5;
+    z += 6*y;
+    y += -1.5*z;
+    x += -1 * z;
+    x += -1 * y;
+    return (x, y, z);
+
 
 def part_2():
     with open('../input.txt') as input_file:
@@ -80,19 +81,23 @@ def part_2():
     @cache
     def expand(pos):
         directions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
-        positions = (pos_move(p, d) for p, d in itertools.product([pos], directions))
-        positions = (position for position in positions if position not in garden.blockers)
+        positions = (pos_move(pos, d) for d in directions)
+        positions = (position for position in positions if (position[0] % garden.col_len, position[1] % garden.row_len) not in garden.blockers)
         # expanded = (position for position in (  if position not in garden.blockers and 0 <= position[0] < garden.col_len and 0<= position[1] < garden.row_len)
         return list(positions)
 
     odd_totals = []    
-    for i in range((65 + 262 * 2) + 1):
+    for i in range(5000):
         potentials = {position for position in itertools.chain(*[expand(p) for p in potentials])}
-        if (i) % 262 == 65:
+        if (i)%262 == 65:
             odd_totals.append(len(potentials))
-        print(i, len(potentials))
+            if len(odd_totals) == 3:
+                break
+        print(i+1, len(potentials))
+    # odd_totals = [3709, 93999, 304969]
 
     a,b,c = find_coefficients(*odd_totals)
+    print(a, b, c)
 
     steps = (26501365 - 65)/262
 
