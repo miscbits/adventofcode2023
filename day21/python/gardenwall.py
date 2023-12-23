@@ -1,9 +1,10 @@
 from __future__ import annotations
+from enum import Enum
+from collections import deque
 from dataclasses import dataclass, field
 from functools import cache
 import itertools
-from enum import Enum
-
+import numpy as np
 Direction = Enum("Direction", ["UP", "DOWN", "LEFT", "RIGHT"])
 
 
@@ -68,17 +69,6 @@ def part_1():
         print(i + 1, len(potentials))
 
 
-def find_coefficients(x, y, z):
-    y += -4*x
-    z += -9*x
-    y *= -0.5
-    z += 6*y
-    y += -1.5*z
-    x += -1 * z
-    x += -1 * y
-    return (x, y, z)
-
-
 def part_2():
     with open('../input.txt') as input_file:
         garden = Garden.from_string(input_file.read())
@@ -94,22 +84,23 @@ def part_2():
             not in garden.blockers)
         return list(positions)
 
-    odd_totals = []
+    Y = []
     for i in range(1, 5000):
         potentials = {position for position in itertools.chain(
             *[expand(p) for p in potentials])}
-        if (i) % 262 == 0:
-            odd_totals.append(len(potentials))
-            if len(odd_totals) == 3:
+        if (i) in [65, 65+131, 65+131*2]:
+            Y.append(len(potentials))
+            if len(Y) == 3:
                 break
         print(i+1, len(potentials))
 
-    print(odd_totals)
-    a, b, c = find_coefficients(*odd_totals)
-    print(a, b, c)
+    print(Y)
+    # get coefficients for quadratic equation y = a*x^2 + bx + c
+    a, b, c = np.polyfit([0, 1, 2], Y, deg=2)
 
-    steps = (26501365)/262
-    total = a * steps**2 + b * steps + c
+    steps = (26501365)//131
+    print([a, b, c], Y, steps)
+    total = np.polyval([a, b, c], steps)
     print(total)
 
 
