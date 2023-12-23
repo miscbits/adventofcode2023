@@ -95,23 +95,21 @@ def part_2():
         return list(positions)
 
     odd_totals = []
-    for i in range(5000):
+    for i in range(1, 5000):
         potentials = {position for position in itertools.chain(
             *[expand(p) for p in potentials])}
-        if (i) % 262 == 65:
+        if (i) % 262 == 0:
             odd_totals.append(len(potentials))
             if len(odd_totals) == 3:
                 break
         print(i+1, len(potentials))
-    # odd_totals = [3709, 93999, 304969]
 
+    print(odd_totals)
     a, b, c = find_coefficients(*odd_totals)
     print(a, b, c)
 
-    steps = (26501365 - 65)/262
-
+    steps = (26501365)/262
     total = a * steps**2 + b * steps + c
-
     print(total)
 
 
