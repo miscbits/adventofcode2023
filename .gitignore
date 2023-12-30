@@ -6,5 +6,4 @@ target
 Cargo.lock
 input.txt
 day16
-day17
 output.txt
