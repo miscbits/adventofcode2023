@@ -1,8 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
-import enum
-import copy
 
 
 class Direction(Enum):
