@@ -5,5 +5,4 @@ __pycache__
 target
 Cargo.lock
 input.txt
-day16
 output.txt
